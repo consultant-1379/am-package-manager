@@ -1,0 +1,31 @@
+#
+# COPYRIGHT Ericsson 2024
+#
+#
+#
+# The copyright to the computer program(s) herein is the property of
+#
+# Ericsson Inc. The programs may be used and/or copied only with written
+#
+# permission from Ericsson Inc. or in accordance with the terms and
+#
+# conditions stipulated in the agreement/contract under which the
+#
+# program(s) have been supplied.
+#
+
+test-cnf-deployment-in-hpa:
+  Scaling-Parameter-Name: "test-cnf-with-hpa.test-cnf.replicaCount"
+  Mciop-Name: "helm_package1"
+test-cnf-with-hpa-deployment-in-hpa:
+  Scaling-Parameter-Name: "test-cnf-with-hpa.replicaCount"
+  Auto-Scaling-MinReplicas-Name: "test-cnf-with-hpa.minReplicas"
+  Auto-Scaling-MaxReplicas-Name: "test-cnf-with-hpa.maxReplicas"
+  Auto-Scaling-Enabled: "test-cnf-with-hpa.autoscaling.engine.enabled"
+  Mciop-Name: "helm_package1"
+test-cnf:
+  Scaling-Parameter-Name: "test-cnf.replicaCount"
+  Mciop-Name: "helm_package1"
+dummy-chart:
+  Scaling-Parameter-Name: "replicaCount"
+  Mciop-Name: "helm_package2"

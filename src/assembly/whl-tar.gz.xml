@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ~ COPYRIGHT Ericsson 2024
+ ~
+ ~
+ ~
+ ~ The copyright to the computer program(s) herein is the property of
+ ~
+ ~ Ericsson Inc. The programs may be used and/or copied only with written
+ ~
+ ~ permission from Ericsson Inc. or in accordance with the terms and
+ ~
+ ~ conditions stipulated in the agreement/contract under which the
+ ~
+ ~ program(s) have been supplied.
+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+<assembly xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2 http://maven.apache.org/xsd/assembly-1.1.2.xsd">
+
+    <id>default</id>
+
+    <formats>
+        <format>tar.gz</format>
+    </formats>
+
+    <fileSets>
+        <fileSet>
+            <directory>${lib.dist}</directory>
+            <outputDirectory>${file.separator}</outputDirectory>
+            <includes>
+                <include>*.whl</include>
+            </includes>
+        </fileSet>
+        <fileSet>
+            <directory>src/scripts</directory>
+            <outputDirectory>${file.separator}</outputDirectory>
+            <includes>
+                <include>install.sh</include>
+            </includes>
+        </fileSet>
+    </fileSets>
+
+</assembly>

@@ -1,0 +1,5 @@
+metadata:
+vnf_product_name:sample_name
+vnf_provider_id:sample_id
+vnf_release_date_time:1996-12-19T16:39:57-08:00
+vnf_package_version:1

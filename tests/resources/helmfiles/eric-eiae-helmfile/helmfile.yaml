@@ -1,0 +1,381 @@
+#
+# COPYRIGHT Ericsson 2024
+#
+#
+#
+# The copyright to the computer program(s) herein is the property of
+#
+# Ericsson Inc. The programs may be used and/or copied only with written
+#
+# permission from Ericsson Inc. or in accordance with the terms and
+#
+# conditions stipulated in the agreement/contract under which the
+#
+# program(s) have been supplied.
+#
+
+bases:
+  - environment.yaml
+  - repositories.yaml
+  - apiversions.gotmpl
+
+---
+
+helmDefaults:
+  wait: true
+  timeout: {{ .Values | get "helmfile.timeout" 2000 }}
+  waitForJobs: true
+
+helmfiles:
+  - path: crds-helmfile.yaml
+    values:
+    - eric-tm-ingress-controller-cr-crd:
+        enabled: {{ .Values.optionality | get "eric-cloud-native-base.eric-tm-ingress-controller-cr.enabled" }}
+    - eric-mesh-controller-crd:
+        enabled: {{ .Values | get "global.serviceMesh.enabled" }}
+    - eric-sec-sip-tls-crd:
+        enabled: {{ .Values.optionality | get "eric-cloud-native-base.eric-sec-sip-tls.enabled" }}
+    - eric-oss-kf-sz-op-crd:
+        enabled: {{ .Values | get "tags.dmm" }}
+    - eric-aiml-model-lcm-crd:
+        enabled: {{ .Values | get "tags.ml" }}
+    - eric-sec-certm-crd:
+        enabled: true
+    - eric-data-key-value-database-rd-crd:
+        enabled: true
+    - eric-data-wide-column-database-cd-crd:
+        enabled: {{ .Values | get "tags.sef" false }}
+    - eric-sec-access-mgmt-crd:
+        enabled: {{ .Values | get "tags.sef" false }}
+    - {{ toYaml .Values | nindent 6 }}
+---
+
+releases:
+  - name: secret-eric-data-object-storage-mn
+    chart: ./values-templates/secret-eric-data-object-storage-mn
+    namespace: {{ .Values | get "helmfile.app.namespace" "eric-app-ns" }}
+    installed: {{ .Values | get "secret-eric-data-object-storage-mn.enabled" }}
+
+  - name: eric-cloud-native-service-mesh
+    namespace: {{ .Values | get "helmfile.app.namespace" "eric-app-ns" }}
+    chart: {{ .Values | get "repository" "adp-umbrella-released" }}/eric-cloud-native-service-mesh
+    version: 7.1.0
+    installed: {{ .Values | get "global.serviceMesh.enabled" }}
+    condition: eric-cloud-native-service-mesh.enabled
+    labels:
+      csar: eric-cloud-native-service-mesh
+    values:
+      - "./values-templates/global-values.yaml.gotmpl"
+      - "./values-templates/release-optionality-values.yaml.gotmpl"
+      - "./default-values/state-dependent-values.yaml.gotmpl"
+      - "./values-templates/eric-cloud-native-service-mesh-site-values.yaml.gotmpl"
+      - "./values-templates/streaming-method.compatibility.yaml.gotmpl"
+      - "./values-templates/release-site-values.yaml.gotmpl"
+
+  - name: eric-cnbase-oss-config
+    namespace: {{ .Values | get "helmfile.app.namespace" "eric-app-ns" }}
+    chart: {{ .Values | get "repository" "eric-oss-drop" }}/eric-cnbase-oss-config
+    version: 1.2.0
+    installed: true
+    condition: eric-cnbase-oss-config.enabled
+    labels:
+      csar: eric-cnbase-oss-config
+    values:
+      - "./default-values/state-dependent-values.yaml.gotmpl"
+      - "./values-templates/global-values.yaml.gotmpl"
+      - "./values-templates/eric-cnbase-oss-config-site-values.yaml.gotmpl"
+      - "./values-templates/release-site-values.yaml.gotmpl"
+      - "./values-templates/eric-cnbase-oss-config-optionality-keys.yaml.gotmpl"
+    hooks:
+      - events: ['postsync']
+        showlogs: true
+        command: ./scripts/purge-releases.sh
+        args:
+          - '{{ .Values | get "helmfile.app.namespace" "eric-app-ns" }}'
+          - eric-cncs-oss-pre-config
+
+  - name: eric-eic-common-base-config
+    namespace: {{ .Values | get "helmfile.app.namespace" "eric-app-ns" }}
+    chart: ./charts/eric-eic-common-base-config
+    needs:
+      - eric-oss-common-base
+    installed: {{ .Values | get "eric-eic-common-base-config.enabled" }}
+    values:
+      {{ if hasKey .Values.optionality "eric-oss-common-base" }}
+      - {{ .Values.optionality | get "eric-oss-common-base" | toYaml | nindent 8 }}
+      {{ end }}
+      - "./default-values/state-dependent-values.yaml.gotmpl"
+      - "./values-templates/eric-oss-common-base-site-values.yaml.gotmpl"
+      - "./values-templates/eric-eic-common-base-config-site-values.yaml.gotmpl"
+
+  - name: eric-cloud-native-base
+    namespace: {{ .Values | get "helmfile.app.namespace" "eric-app-ns" }}
+    chart: {{ .Values | get "repository" "adp-umbrella-released" }}/eric-cloud-native-base
+    version: 114.4.0
+    needs:
+      - eric-cnbase-oss-config
+      - eric-cloud-native-service-mesh
+    installed: true
+    condition: eric-cloud-native-base.enabled
+    labels:
+      csar: eric-cloud-native-base
+    values:
+      - "./values-templates/global-values.yaml.gotmpl"
+      - "./values-templates/release-optionality-values.yaml.gotmpl"
+      - "./values-templates/eric-cloud-native-base-site-values.yaml.gotmpl"
+      - "./values-templates/streaming-method.compatibility.yaml.gotmpl"
+      - "./values-templates/deployment-type.compatibility.yaml.gotmpl"
+      - "./values-templates/release-site-values.yaml.gotmpl"
+      - "./values-templates/eric-data-search-engine-curator-values.yaml.gotmpl"
+
+  - name: eric-cncs-oss-config
+    namespace: {{ .Values | get "helmfile.app.namespace" "eric-app-ns" }}
+    chart: {{ .Values | get "repository" "eric-oss-drop" }}/eric-cncs-oss-config
+    version: 0.5.0
+    needs:
+      - eric-cloud-native-service-mesh
+    installed: true
+    condition: eric-cncs-oss-config.enabled
+    labels:
+      csar: eric-cncs-oss-config
+    values:
+      - "./values-templates/global-values.yaml.gotmpl"
+      - {{ .Values.optionality | get "eric-cloud-native-base" | toYaml | nindent 8 }}
+      - "./default-values/state-dependent-values.yaml.gotmpl"
+      - "./values-templates/eric-cncs-oss-config-site-values.yaml.gotmpl"
+      - "./values-templates/eric-cloud-native-base-site-values.yaml.gotmpl"
+      - "./values-templates/release-site-values.yaml.gotmpl"
+      - "./values-templates/eric-data-search-engine-curator-values.yaml.gotmpl"
+
+  - name: eric-oss-common-base
+    namespace: {{ .Values | get "helmfile.app.namespace" "eric-app-ns" }}
+    chart: {{ .Values | get "repository" "eric-oss-drop" }}/eric-oss-common-base
+    version: 0.52.0
+    needs:
+      - eric-cloud-native-service-mesh
+    installed: true
+    condition: eric-oss-common-base.enabled
+    labels:
+      csar: eric-oss-common-base
+    values:
+      - "./values-templates/global-values.yaml.gotmpl"
+      - "./values-templates/release-optionality-values.yaml.gotmpl"
+      - "./default-values/state-dependent-values.yaml.gotmpl"
+      - "./values-templates/eric-oss-common-base-site-values.yaml.gotmpl"
+      - "./values-templates/streaming-method.compatibility.yaml.gotmpl"
+      - "./values-templates/release-site-values.yaml.gotmpl"
+
+  - name: eric-oss-oran-support
+    namespace: {{ .Values | get "helmfile.app.namespace" "eric-app-ns" }}
+    chart: {{ .Values | get "repository" "eric-oss-drop" }}/eric-oss-oran-support
+    version: 0.33.0
+    needs:
+      - eric-cloud-native-base
+      - eric-oss-common-base
+      - eric-cloud-native-service-mesh
+    installed: {{ .Values | get "tags.os" false }}
+    condition: eric-oss-oran-support.enabled
+    labels:
+      csar: eric-oss-oran-support
+    values:
+      - "./values-templates/global-values.yaml.gotmpl"
+      - "./values-templates/release-optionality-values.yaml.gotmpl"
+      - "./default-values/state-dependent-values.yaml.gotmpl"
+      - "./values-templates/eric-oss-oran-support-site-values.yaml.gotmpl"
+      - "./values-templates/release-site-values.yaml.gotmpl"
+
+  - name: eric-oss-adc
+    namespace: {{ .Values | get "helmfile.app.namespace" "eric-app-ns" }}
+    chart: {{ .Values | get "repository" "eric-oss-drop" }}/eric-oss-adc
+    version: 0.407.0
+    needs:
+      - eric-cloud-native-base
+      - eric-cloud-native-service-mesh
+      - eric-oss-common-base
+    installed: {{ .Values | get "tags.adc" false }}
+    condition: eric-oss-adc.enabled
+    labels:
+      csar: eric-oss-adc
+    values:
+      - "./values-templates/global-values.yaml.gotmpl"
+      - "./values-templates/release-optionality-values.yaml.gotmpl"
+      - "./default-values/state-dependent-values.yaml.gotmpl"
+      - "./values-templates/eric-oss-adc-site-values.yaml.gotmpl"
+      - "./values-templates/release-site-values.yaml.gotmpl"
+
+  - name: eric-oss-dmm
+    namespace: {{ .Values | get "helmfile.app.namespace" "eric-app-ns" }}
+    chart: {{ .Values | get "repository" "eric-oss-drop" }}/eric-oss-dmm
+    version: 0.192.0
+    needs:
+      - eric-cloud-native-base
+      - eric-cloud-native-service-mesh
+      - eric-oss-common-base
+    installed: {{ .Values | get "tags.dmm" false }}
+    condition: eric-oss-dmm.enabled
+    labels:
+      csar: eric-oss-dmm
+    values:
+      - "./values-templates/global-values.yaml.gotmpl"
+      - "./values-templates/release-optionality-values.yaml.gotmpl"
+      - "./default-values/state-dependent-values.yaml.gotmpl"
+      - "./values-templates/eric-oss-dmm-site-values.yaml.gotmpl"
+      - "./values-templates/release-site-values.yaml.gotmpl"
+
+  - name: eric-topology-handling
+    namespace: {{ .Values | get "helmfile.app.namespace" "eric-app-ns" }}
+    chart: {{ .Values | get "repository" "eric-oss-drop" }}/eric-topology-handling
+    version: 0.60.0
+    needs:
+      - eric-cloud-native-base
+      - eric-cloud-native-service-mesh
+      - eric-oss-common-base
+    installed: {{ .Values | get "tags.th" false }}
+    condition: eric-topology-handling.enabled
+    labels:
+      csar: eric-topology-handling
+    values:
+      - "./values-templates/global-values.yaml.gotmpl"
+      - "./values-templates/release-optionality-values.yaml.gotmpl"
+      - "./default-values/state-dependent-values.yaml.gotmpl"
+      - "./values-templates/eric-topology-handling-site-values.yaml.gotmpl"
+      - "./values-templates/release-site-values.yaml.gotmpl"
+
+  - name: eric-oss-ericsson-adaptation
+    namespace: {{ .Values | get "helmfile.app.namespace" "eric-app-ns" }}
+    chart: {{ .Values | get "repository" "eric-oss-drop" }}/eric-oss-ericsson-adaptation
+    version: 0.336.0
+    needs:
+      - eric-cloud-native-base
+      - eric-cloud-native-service-mesh
+      - eric-oss-common-base
+    installed: {{ .Values | get "tags.eas" false }}
+    condition: eric-oss-ericsson-adaptation.enabled
+    labels:
+      csar: eric-oss-ericsson-adaptation
+    values:
+      - "./values-templates/global-values.yaml.gotmpl"
+      - "./values-templates/release-optionality-values.yaml.gotmpl"
+      - "./default-values/state-dependent-values.yaml.gotmpl"
+      - "./values-templates/eric-oss-ericsson-adaptation-site-values.yaml.gotmpl"
+      - "./values-templates/release-site-values.yaml.gotmpl"
+
+  - name: eric-oss-app-mgr
+    namespace: {{ .Values | get "helmfile.app.namespace" "eric-app-ns" }}
+    chart: {{ .Values | get "repository" "eric-oss-drop" }}/eric-oss-app-mgr
+    version: 1.182.0
+    needs:
+      - eric-cloud-native-base
+      - eric-cloud-native-service-mesh
+      - eric-oss-common-base
+    installed: {{ .Values | get "tags.appmgr" false }}
+    condition: eric-oss-app-mgr.enabled
+    labels:
+      csar: eric-oss-app-mgr
+    values:
+      - "./values-templates/global-values.yaml.gotmpl"
+      - "./values-templates/release-optionality-values.yaml.gotmpl"
+      - "./default-values/state-dependent-values.yaml.gotmpl"
+      - "./values-templates/eric-oss-app-mgr-site-values.yaml.gotmpl"
+      - "./values-templates/release-site-values.yaml.gotmpl"
+
+  - name: eric-oss-config-handling
+    namespace: {{ .Values | get "helmfile.app.namespace" "eric-app-ns" }}
+    chart: {{ .Values | get "repository" "eric-oss-drop" }}/eric-oss-config-handling
+    version: 0.83.0
+    needs:
+      - eric-cloud-native-base
+      - eric-cloud-native-service-mesh
+      - eric-oss-common-base
+    installed: {{ .Values | get "tags.ch" false }}
+    condition: eric-oss-config-handling.enabled
+    labels:
+      csar: eric-oss-config-handling
+    values:
+      - "./values-templates/global-values.yaml.gotmpl"
+      - "./values-templates/release-optionality-values.yaml.gotmpl"
+      - "./default-values/state-dependent-values.yaml.gotmpl"
+      - "./values-templates/eric-oss-config-handling-site-values.yaml.gotmpl"
+      - "./values-templates/release-site-values.yaml.gotmpl"
+
+  - name: eric-oss-pm-stats-calc-handling
+    namespace: {{ .Values | get "helmfile.app.namespace" "eric-app-ns" }}
+    chart: {{ .Values | get "repository" "eric-oss-drop" }}/eric-oss-pm-stats-calc-handling
+    version: 0.314.0
+    needs:
+      - eric-cloud-native-base
+      - eric-oss-common-base
+      - eric-cloud-native-service-mesh
+    installed: {{ .Values | get "tags.pmh" false }}
+    condition: eric-oss-pm-stats-calc-handling.enabled
+    labels:
+      csar: eric-oss-pm-stats-calc-handling
+    values:
+      - "./values-templates/global-values.yaml.gotmpl"
+      - "./values-templates/release-optionality-values.yaml.gotmpl"
+      - "./default-values/state-dependent-values.yaml.gotmpl"
+      - "./values-templates/eric-oss-pm-stats-calc-handling-site-values.yaml.gotmpl"
+      - "./values-templates/release-site-values.yaml.gotmpl"
+
+  - name: eric-oss-ml-execution-env
+    namespace: {{ .Values | get "helmfile.app.namespace" "eric-app-ns" }}
+    chart: {{ .Values | get "repository" "eric-oss-drop" }}/eric-oss-ml-execution-env
+    version: 0.23.0
+    needs:
+      - eric-cloud-native-base
+      - eric-oss-common-base
+      - eric-cloud-native-service-mesh
+    installed: {{ .Values | get "tags.ml" false }}
+    condition: eric-oss-ml-execution-env.enabled
+    labels:
+      csar: eric-oss-ml-execution-env
+    values:
+      - "./values-templates/global-values.yaml.gotmpl"
+      - "./values-templates/release-optionality-values.yaml.gotmpl"
+      - "./default-values/state-dependent-values.yaml.gotmpl"
+      - "./values-templates/eric-oss-ml-execution-env-site-values.yaml.gotmpl"
+      - "./values-templates/release-site-values.yaml.gotmpl"
+
+  - name: eric-topology-exposure-handling
+    namespace: {{ .Values | get "helmfile.app.namespace" "eric-app-ns" }}
+    chart: {{ .Values | get "repository" "eric-oss-drop" }}/eric-topology-exposure-handling
+    version: 0.0.0
+    needs:
+      - eric-cloud-native-base
+      - eric-cloud-native-service-mesh
+      - eric-oss-common-base
+    installed: {{ .Values | get "tags.teh" false }}
+    condition: eric-topology-exposure-handling.enabled
+    labels:
+      csar: eric-topology-exposure-handling
+    values:
+      - "./values-templates/global-values.yaml.gotmpl"
+      - "./values-templates/release-optionality-values.yaml.gotmpl"
+      - "./default-values/state-dependent-values.yaml.gotmpl"
+      - "./values-templates/release-site-values.yaml.gotmpl"
+
+  - name: eric-service-exposure-framework
+    namespace: {{ .Values | get "helmfile.app.namespace" "eric-app-ns" }}
+    chart: {{ .Values | get "repository" "eric-oss-drop" }}/eric-service-exposure-framework
+    version: 0.1.0
+    needs:
+      - eric-cloud-native-base
+    installed: {{ .Values | get "tags.sef" false }}
+    labels:
+      csar: eric-service-exposure-framework
+    values:
+      - "./values-templates/global-values.yaml.gotmpl"
+      - "./values-templates/release-optionality-values.yaml.gotmpl"
+      - "./default-values/state-dependent-values.yaml.gotmpl"
+      - "./values-templates/eric-service-exposure-framework-site-values.yaml.gotmpl"
+      - "./values-templates/release-site-values.yaml.gotmpl"
+
+hooks:
+  - events:
+    - postsync
+    showlogs: true
+    command: ./scripts/purge-releases.sh
+    args:
+      - '{{ .Values | get "helmfile.app.namespace" "eric-app-ns" }}'
+      - eric-service-mesh-integration
+      - eric-mesh-controller

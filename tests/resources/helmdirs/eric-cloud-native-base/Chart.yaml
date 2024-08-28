@@ -1,0 +1,31 @@
+#
+# COPYRIGHT Ericsson 2024
+#
+#
+#
+# The copyright to the computer program(s) herein is the property of
+#
+# Ericsson Inc. The programs may be used and/or copied only with written
+#
+# permission from Ericsson Inc. or in accordance with the terms and
+#
+# conditions stipulated in the agreement/contract under which the
+#
+# program(s) have been supplied.
+#
+
+apiVersion: v2
+appVersion: 1.0.0
+dependencies:
+- condition: eric-cm-mediator.enabled
+  name: eric-cm-mediator
+  repository: https://arm.sero.gic.ericsson.se/artifactory/proj-adp-gs-all-helm
+  version: 7.6.0+11
+- condition: eric-ctrl-bro.enabled
+  name: eric-ctrl-bro
+  repository: https://arm.sero.gic.ericsson.se/artifactory/proj-adp-gs-all-helm/
+  version: 4.7.0+23
+description: A Helm chart for Cloud Native Base common services
+name: eric-cloud-native-base
+type: application
+version: 1.50.0

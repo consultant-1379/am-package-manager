@@ -1,0 +1,33 @@
+#
+# COPYRIGHT Ericsson 2024
+#
+#
+#
+# The copyright to the computer program(s) herein is the property of
+#
+# Ericsson Inc. The programs may be used and/or copied only with written
+#
+# permission from Ericsson Inc. or in accordance with the terms and
+#
+# conditions stipulated in the agreement/contract under which the
+#
+# program(s) have been supplied.
+#
+
+global:
+  registry:
+    url: armdocker.rnd.ericsson.se
+    pullSecret: armdocker
+
+# Configuration for ADP subcharts
+#
+eric-mesh-sidecar-injector:
+  enabled: true
+
+  istio_cni:
+    enabled: false
+
+  imageCredentials:
+    pullPolicy: IfNotPresent
+    registry:
+      url:

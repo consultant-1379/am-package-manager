@@ -1,0 +1,26 @@
+#
+# COPYRIGHT Ericsson 2024
+#
+#
+#
+# The copyright to the computer program(s) herein is the property of
+#
+# Ericsson Inc. The programs may be used and/or copied only with written
+#
+# permission from Ericsson Inc. or in accordance with the terms and
+#
+# conditions stipulated in the agreement/contract under which the
+#
+# program(s) have been supplied.
+#
+
+apiVersion: v1
+appVersion: 7.6.0
+description: A Helm chart for the ADP Configuration Management (CM) Mediator Service
+maintainers:
+- email: PDLCAMSDEV@pdl.internal.ericsson.com
+  name: Atlantis
+name: eric-cm-mediator
+sources:
+- https://gerrit.ericsson.se/plugins/gitiles/adp-gs/adp-gs-cm/
+version: 7.6.0+11

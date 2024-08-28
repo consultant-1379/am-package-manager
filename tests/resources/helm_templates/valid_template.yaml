@@ -1,0 +1,460 @@
+---
+# Source: eric-eo/charts/eric-eo-evnfm/charts/eric-am-onboarding-service/templates/deployment.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eric-am-onboarding-service
+  labels:
+    app: eric-am-onboarding-service
+    chart: eric-am-onboarding-service-1.0.176_1
+    release: release-name
+    heritage: Tiller
+    app.kubernetes.io/name: "eric-am-onboarding-service"
+    app.kubernetes.io/version: "1.0.176_1"
+    app.kubernetes.io/instance: "release-name"
+  annotations:
+    ericsson.com/product-name: "AM Onboarding Service"
+    ericsson.com/product-number: "CXC2011722/1"
+    ericsson.com/product-revision: "R1A"
+spec:
+  replicas: 1
+  strategy:
+    type: "RollingUpdate"
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 25%
+  selector:
+    matchLabels:
+      app: eric-am-onboarding-service
+      release: release-name
+  template:
+    metadata:
+      annotations:
+        prometheus.io/path: "/actuator/prometheus"
+        prometheus.io/port: "8888"
+        prometheus.io/scrape: "true"
+      labels:
+        app: eric-am-onboarding-service
+        release: release-name
+        app.kubernetes.io/name: "eric-am-onboarding-service"
+        app.kubernetes.io/version: "1.0.176_1"
+        app.kubernetes.io/instance: "release-name"
+    spec:
+      containers:
+        - name: eric-am-onboarding-service
+          image: |-
+            armdocker.rnd.ericsson.se/proj-am/releases/eric-am-onboarding-service:stable
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8888
+              protocol: TCP
+          env:
+            - name: "keystore.location"
+              value: /onboarding.keystore
+            - name: "spring.profiles.active"
+              value: "prod"
+            - name: "helm.registry.scheme"
+              value: http
+            - name: "helm.registry.host"
+              value: "eric-lcm-helm-chart-registry.default"
+#              valueFrom:
+#                secretKeyRef:
+#                  name: eric-lcm-helm-chart-registry
+#                  key: url
+            - name: "helm.registry.repo"
+              value: onboarded
+            - name: "helm.registry.user.name"
+              valueFrom:
+                secretKeyRef:
+                  name: eric-lcm-helm-chart-registry
+                  key: BASIC_AUTH_USER
+            - name: "helm.registry.user.password"
+              valueFrom:
+                secretKeyRef:
+                  name: eric-lcm-helm-chart-registry
+                  key: BASIC_AUTH_PASS
+            - name: "DOCKER_REGISTRY_ADDRESS"
+              valueFrom:
+                secretKeyRef:
+                  name: eric-lcm-container-registry-registry
+                  key: url
+            - name: "SPRING_DATASOURCE_URL"
+              value: "jdbc:postgresql://application-manager-postgres.default:5432/onboarding"
+            - name:  "SPRING_DATASOURCE_USERNAME"
+              valueFrom:
+                secretKeyRef:
+                  name: eric-sec-access-mgmt-creds
+                  key: pguserid
+            - name:  "SPRING_DATASOURCE_PASSWORD"
+              valueFrom:
+                 secretKeyRef:
+                   name: eric-sec-access-mgmt-creds
+                   key: pgpasswd
+            - name: "docker.registry.user.name"
+              valueFrom:
+                secretKeyRef:
+                  name: eric-evnfm-rbac-default-user
+                  key: userid
+            - name: "docker.registry.user.password"
+              valueFrom:
+                secretKeyRef:
+                  name: eric-evnfm-rbac-default-user
+                  key: userpasswd
+            - name: TZ
+              value: UTC
+            - name: SERVICE_ID
+              value: "eric-eo-evnfm-onboarding"
+          securityContext:
+            allowPrivilegeEscalation: true
+            privileged: true
+          resources:
+            limits:
+              cpu: 1000m
+              ephemeral-storage: 120Gi
+              memory: 1024Mi
+            requests:
+              cpu: 200m
+              ephemeral-storage: 25Gi
+              memory: 512Mi
+          livenessProbe:
+            initialDelaySeconds: 200
+            timeoutSeconds: 5
+            periodSeconds: 30
+            failureThreshold: 3
+            httpGet:
+              path: /actuator/health
+              port: 8888
+          readinessProbe:
+            initialDelaySeconds: 20
+            timeoutSeconds: 5
+            periodSeconds: 10
+            failureThreshold: 15
+            httpGet:
+              path: /actuator/health
+              port: 8888
+          volumeMounts:
+            - mountPath: /mnt/certs
+              name: registry-cert
+              readOnly: true
+      volumes:
+        - name: docker-socket
+          hostPath:
+            path: /var/run/docker.sock
+            type: Socket
+        - name: registry-cert
+          secret:
+            secretName: registry-tls-secret
+            items:
+            - key: tls.crt
+              path: registry/tls
+
+---
+# Source: eric-eo/charts/eric-eo-evnfm/charts/eric-am-common-wfs/templates/statefulset-wfs.yaml
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: eric-am-common-wfs
+  labels:
+    app: eric-am-common-wfs
+    chart: eric-am-common-wfs-1.0.174_1
+    release: release-name
+    heritage: Tiller
+    app.kubernetes.io/name: "eric-am-common-wfs"
+    app.kubernetes.io/version: "1.0.174_1"
+    app.kubernetes.io/instance: "release-name"
+  annotations:
+    ericsson.com/product-name: "AM Common WFS"
+    ericsson.com/product-number: "CXC2011724/1"
+    ericsson.com/product-revision: "R1A"
+spec:
+  serviceName: eric-am-common-wfs
+  replicas: 1
+  selector:
+    matchLabels:
+      app: eric-am-common-wfs
+      release: release-name
+  template:
+    metadata:
+      annotations:
+        prometheus.io/path: "/actuator/prometheus"
+        prometheus.io/port: "8888"
+        prometheus.io/scrape: "true"
+      labels:
+        app: eric-am-common-wfs
+        release: release-name
+        app.kubernetes.io/name: "eric-am-common-wfs"
+        app.kubernetes.io/version: "1.0.174_1"
+        app.kubernetes.io/instance: "release-name"
+    spec:
+      serviceAccountName: evnfm
+      automountServiceAccountToken: true
+      containers:
+        - name: eric-am-common-wfs
+          image: armdocker.rnd.ericsson.se/proj-am/releases/eric-am-common-wfs:1.0.174-1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8888
+              protocol: TCP
+          env:
+            - name: "HELM_URL"
+              valueFrom:
+                secretKeyRef:
+                  name: eric-lcm-helm-chart-registry
+                  key: url
+
+            - name: "HELM_REPOSITORY"
+              value: onboarded
+            - name: "HELM_REPOSITORY_NAME"
+              value: adp-am
+            - name: "CLUSTER_CONFIG_DIRECTORY"
+              value: /mnt/cluster_config
+            - name: "SPRING_DATASOURCE_URL"
+              value: "jdbc:postgresql://application-manager-postgres.default:5432/camunda"
+            - name:  "SPRING_DATASOURCE_USERNAME"
+              valueFrom:
+                secretKeyRef:
+                  name: eric-sec-access-mgmt-creds
+                  key: pguserid
+            - name:  "SPRING_DATASOURCE_PASSWORD"
+              valueFrom:
+                secretKeyRef:
+                  name: eric-sec-access-mgmt-creds
+                  key: pgpasswd
+            - name: "autoConfigureDocker.enabled"
+              value: "true"
+            - name: "docker.registry.url"
+              valueFrom:
+                secretKeyRef:
+                  name: eric-lcm-container-registry-registry
+                  key: url
+            - name: "docker.registry.username"
+              valueFrom:
+                secretKeyRef:
+                  name: eric-evnfm-rbac-default-user
+                  key: userid
+            - name: "docker.registry.password"
+              valueFrom:
+                secretKeyRef:
+                  name: eric-evnfm-rbac-default-user
+                  key: userpasswd
+            - name: "containerRegistry.global.registry.pullSecret"
+              value: regcred
+
+            - name: TZ
+              value : UTC
+            - name: SERVICE_ID
+              value: "eric-eo-evnfm-wfs"
+            - name: "SPRING_RABBITMQ_PASSWORD"
+              valueFrom:
+                secretKeyRef:
+                  name: eric-eo-evnfm-messaging-secret
+                  key: rabbitmq-password
+            - name: "SPRING_RABBITMQ_USERNAME"
+              value: "user"
+            - name: "SPRING_RABBITMQ_HOST"
+              value: "eric-data-message-bus-rmq.default"
+            - name: "SPRING_RABBITMQ_PORT"
+              value: "5672"
+          volumeMounts:
+            - mountPath: /usr/local/bin/kubectl
+              name: kube-control
+            - mountPath: /usr/local/bin/helm
+              name: helm-binary
+            - mountPath: "/mnt/cluster_config"
+              name: cluster-config-volume
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 2Gi
+            requests:
+              cpu: 400m
+              memory: 2Gi
+          livenessProbe:
+            exec:
+              command:
+              - curl
+              - localhost:8888
+            # setting initial delay to match readiness probe timeout
+            # discussions ongoing about a better way to do this on github
+            # /kubernetes/kubernetes/issues/27114
+            initialDelaySeconds: 600
+            periodSeconds: 5
+            timeoutSeconds: 180
+          readinessProbe:
+            exec:
+             command:
+              - curl
+              - localhost:8888
+            initialDelaySeconds: 1
+            periodSeconds: 5
+            timeoutSeconds: 300
+        - image: armdocker.rnd.ericsson.se/proj-orchestration-so/bro-agent-fm:bfh54fg4
+          imagePullPolicy: IfNotPresent
+          name: eric-am-common-wfs-bro-agent-filemount
+          resources:
+            requests:
+              memory: 250M
+              cpu: 100m
+            limits:
+              memory: 500M
+              cpu: 200m
+          ports:
+            - name: http-bro-fagent
+              containerPort: 8088
+          env:
+            - name: SERVER_PORT
+              value: "8088"
+            - name: REGISTRATION_AGENT_ID
+              value: eric-am-common-wfs-bro-agent-filemount
+            - name: BACKUP_PATHS
+              value: "/mnt/cluster_config"
+            - name: TOMCAT_BACKUP_PATHS
+              value: "/mnt/cluster_config"
+            - name: DB_URL
+              value: "jdbc:postgresql://application-manager-postgres.default:5432/camunda"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: eric-sec-access-mgmt-creds
+                  key: pguserid
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: eric-sec-access-mgmt-creds
+                  key: pgpasswd
+            - name: DB_DRIVER
+              value: "org.postgresql.Driver"
+            - name: DB_RETRY_DELAY
+              value: "30000"
+            - name: TZ
+              value: UTC
+            - name: REGISTRATION_SCOPE
+              value: DEFAULT
+            - name: SOFTWARE_VERSION_DESCRIPTION
+              value: Helm Chart File Agent for backup and restore (e-vnfm workflow service)
+            - name: SOFTWARE_VERSION_PRODUCT_NAME
+              value: ADP Application Manager common workflow service
+            - name: SOFTWARE_VERSION_REVISION
+              value: 1.0.0-25
+            - name: SOFTWARE_VERSION_PRODUCT_NUMBER
+              value: No Number
+            - name: SOFTWARE_VERSION_TYPE
+              value: Management and Monitoring
+          volumeMounts:
+            - mountPath: "/mnt/cluster_config"
+              name: cluster-config-volume
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8088
+            initialDelaySeconds: 200
+            periodSeconds: 20
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8088
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 10
+            failureThreshold: 10
+      volumes:
+        - name: kube-control
+          hostPath:
+            path: /usr/local/bin/kubectl
+            type: File
+        - name: helm-binary
+          hostPath:
+            path: /usr/local/bin/helm
+            type: File
+        - name: cluster-config-volume
+          persistentVolumeClaim:
+            claimName: eric-am-common-wfs
+      initContainers:
+        - name: create-db-schema
+          image:  armdocker.rnd.ericsson.se/proj-am/sles/sles-pg10:latest
+          env:
+            - name: "POSTGRES_HOST"
+              value: "application-manager-postgres.default"
+            - name: "POSTGRES_USER"
+              valueFrom:
+                secretKeyRef:
+                  name: application-manager-postgres
+                  key: super-user
+            - name: "PGPASSWORD"
+              valueFrom:
+                secretKeyRef:
+                  name: eric-sec-access-mgmt-creds
+                  key: pgpasswd
+            - name: "POSTGRES_DB"
+              value: "camunda"
+            - name: "POSTGRES_PORT"
+              value: "5432"
+            - name: "STARTUP_WAIT"
+              value: "10"
+            - name: TZ
+              value: UTC
+
+---
+# Source: eric-eo/charts/eric-eo-api-gateway/templates/hook_create_iam_client.yaml
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: eric-eo-api-gateway-create-iam-client-hook
+  labels:
+    app: eric-eo-api-gateway
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": hook-succeeded,before-hook-creation
+spec:
+  backoffLimit: 8
+  template:
+    metadata:
+      labels:
+        app: eric-eo-api-gateway
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: keycloak-client
+          image: "armdocker.rnd.ericsson.se/proj-orchestration-so/keycloak-client"
+          imagePullPolicy: "IfNotPresent"
+          env:
+          - name: CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: "eric-eo-iam-client-secret"
+                key: "clientSecret"
+          - name: IAM_ADMIN_USER
+            valueFrom:
+              secretKeyRef:
+                name: "eric-sec-access-mgmt-creds"
+                key: "kcadminid"
+          - name: IAM_ADMIN_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: "eric-sec-access-mgmt-creds"
+                key: "kcpasswd"
+          args:
+          - "create"
+          - "client"
+          - "--keycloak_hostname=fakehostname.com"
+          - "--keycloak_user=$(IAM_ADMIN_USER)"
+          - "--keycloak_password=$(IAM_ADMIN_PASSWORD)"
+          - "--config=/config/client-configuration.json"
+          volumeMounts:
+          - name: create-iam-client-volume
+            mountPath: /config
+      volumes:
+      - name: create-iam-client-volume
+        configMap:
+          name: eric-eo-api-gateway-iam-client-configmap
+          defaultMode: 0777
+
+---

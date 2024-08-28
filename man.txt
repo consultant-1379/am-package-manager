@@ -1,0 +1,367 @@
+The Package Manager tool is used to automate CSAR creation process for engineers developing telecommunication solutions.
+It takes a number of command line parameters and produces a single artifact which is the CSAR archive. While creating a
+CSAR the tool performs the following tasks:
+
+- validate existence of the provided artifacts
+- collect Docker images from provided Helm charts
+- pulling collected images into a local archive
+- creating directory structure for the archive content
+- generate hashes and signatures for the CSAR or individual artifacts in a CSAR
+- generating product report upon successful CSAR creation
+
+The structure of the CSAR archive, the format the CSAR signature, the content in the Tosca.meta or CSAR manifest
+files are defined in the ETSI SOL 004 standard : <https://www.etsi.org/deliver/etsi_gs/NFV-SOL/001_099/004/>. The
+tool currently supports features defined in standard versions 2.5.1, 3.3.1, 4.3.1. This does not mean support for
+all features from the aforementioned standards. so the text of the corresponding documents cannot be a reference
+for the features of the Package Manager. Features from other versions of the standards must be added as new
+contributions to the code base.
+
+Mandatory arguments
+
+-n --name CSAR_NAME
+        name of the CSAR file to produce. The value provided via this argument must not contain a file extension -
+        it will be .zip for a CSAR signed with option 2 or .csar otherwise.
+
+
+Optional arguments
+
+--docker-config DOCKER_CONFIG
+        path of a Docker config file in a Package Manager container. The config is used to provide authentication
+        data to pull Docker images for a CSAR. When using this parameter the config file must be mounted as a volume.
+        Currently, this is can only be used with --agentk option switched on. When --agentk option is not provided
+        images are pulled without authentication be executing docker pull command.
+
+--sol-version SOL_VERSION
+        version of the SOL standard to use when creating a csar. The value of this argument currently affects the
+        content of the Tosca.meta file which is created alongside the CSAR by the tool. Values format example: 3.3.1.
+        Supported values for these arguments are {2.5.1,3.3.1,4.3.1}.
+        By default, the SOL version gets from VNFD metadata.template_version if not found
+        the value is 2.8.1 for VNFD Tosca 1.1/1.2 and 4.4.1 for VNFD Tosca 1.3.
+
+--timeout TIMEOUT
+        the number of seconds to wait for image pull operation to complete. This parameters can only be used
+        when --agentk option is not switched on, otherwise it is ignored.
+
+-hm --helm [CHART_PATH [CHART_PATH ...]]
+        a list of one or more relative paths to Helm chart files which should be packaged into a CSAR.
+        The paths must be relative to the working directory which is mounted in the Package Manager container.
+        The tool does not check if all the provided artifacts are referenced / used in VNFD. If you have
+        artifacts for this option stored in the same directory you should consider using the --helm-dir argument.
+
+-hd --helm-dir HELM_DIRECTORY
+        relative path to a directory containing one or many Helm chart artifacts that should be package in the
+        CSAR archive. The path must be relative to the working directory mounted in the Package Manager container.
+        If you have a single Helm chart you should consider using --helm argument.
+
+-hf --helmfile HELMFILE
+        relative path to a directory containing one or many helmfile artifacts that should be package in the
+        CSAR archive. The path must be relative to the working directory mounted in the Package Manager container.
+        If you need to create helmfile CSAR,you should use --eric-product-info with --helmfile,
+        but you can't use --helm/--helm_dir argument with --helmfile argument.
+
+-sc --scripts SCRIPTS_DIRECTORY
+        relative path to a directory containing one or many script artifacts that should be package in the
+        CSAR archive. The path must be relative to the working directory mounted in the Package Manager container.
+
+-l --log LOG_LEVEL
+        provides the logging level for this execution. Supported levels are {CRITICAL, ERROR, WARNING, INFO, DEBUG}.
+        Default is INFO. This level only applies to Python logs and Agentk subprocess is not used for any other
+        subprocesses launched by the Package Manager script like Docker and Helm binary, etc.
+
+--set [SET [SET ...]]
+        provide parameters that should be used for Helm template operation. The template operation
+        is used by Package Manager to search for Docker image references that are used to pull images
+        into the CSAR archive. These parameters should therefore be used in cases when you need to
+        provide mandatory parameters which do not have default values or when you need to change the
+        template output to add / remove some Docker image references from it. If you have a lot of
+        Helm parameters to set you should consider using the -f argument. This parameters will be applied
+        for all charts. If you want to specify parameters for individual chart you have to use -vcf or -vcd.
+
+-f VALUES_FILE
+        relative path to a YAML file containing Helm values that should be used for template operation.
+        The path must be relative to the working directory mounted in the Package Manager container.
+        The template operation is used by Package Manager to search for Docker image references that are
+        used to pull images into the CSAR archive. The parameters should therefore be used in cases when you
+        need to provide mandatory parameters which do not have default values or when you need to change the
+        template output to add / remove some Docker image references from it. If you have a few Helm parameters
+        to set you should consider using the --set argument.
+
+-hs --history CHANGELOG_PATH
+        relative path to a changelog file that should be used for CSAR build. The path must be relative to the
+        working directory mounted in the Package Manager container. The format of the file is not standardized,
+        so it is archived as-is without validation.
+
+-lcs --licenses LICENSES_DIRECTORY
+        relative path to a directory containing one or many license files that should be used for the CSAR build.
+        The path must be relative to the working directory mounted in the Package Manager container. The format
+        of the files is not standardized, so it is archived as-is without validation. If you have a single license
+        file, you should consider using the --license argument.
+
+-lc --license [LICENSE_PATH [LICENSE_PATH ...]]
+        relative paths to one or many license files that should be used for the CSAR build. The paths must be
+        relative to the working directory mounted in the Package Manager container. The format of the files is
+        not standardized, so it is archived as-is without validation. If you have multiple licenses located in
+        the same directory you should consider using the --licenses argument.
+
+-vc --values-csar MANIFEST_VALUES_PATH
+        relative path to a YAML file containing values that should be used to create a manifest for a CSAR.
+        The paths must be relative to the working directory mounted in the Package Manager container. The
+        values from the provided file are loaded, validated and used to create manifest file for a CSAR.
+        Any CSAR generation command must either container this or --manifest argument in it. If none of
+        the arguments is provided - an error is raised.
+
+-mf --manifest MANIFEST_PATH
+        relative path to the manifest file that should be used for CSAR build. The paths must be relative
+        to the working directory mounted in the Package Manager container. Any CSAR generation command must
+        either container this or --manifest argument in it.
+
+-vn --vnfd VNFD_PATH
+        relative path to the VNF Descriptor YAML file that should be used for the CSAR build. The paths
+        must be relative to the working directory mounted in the Package Manager container.
+
+-d --definitions DEFINITIONS_PATH
+        relative path to a singe artifact or a directory containing one or many artifacts that should
+        be included to a CSAR. The paths must be relative to the working directory mounted in the
+        Package Manager container. The single files or a set of files in a provided directory will be
+        put in the Definitions/ directory of the CSAR archive.
+
+-sm --scale-mapping SCALE_MAPPING_FILE_PATH
+        relative path to a scale-mapping file that should be used for CSAR build. The paths must be
+        relative to the working directory mounted in the Package Manager container. This artifact is
+        put in the Definitions/ directory. Content of the provided is not validated. For more information
+        please refer to the EVNFM VNFD Design Guide.
+
+-vcf --values-cnf-file [VALUES_FILE_PATH [VALUES_FILE_PATH ...]]
+        relative paths to default values files that should be used for CSAR build. The paths must be
+        relative to the working directory mounted in the Package Manager container. These values are
+        applied when installing Helm charts from the CSAR. Each values files in the directory should
+        have the same name as on of the chart used to build the CSAR. For more information on the
+        default values files please refer to the EVNFM VNFD Design Guide. If you have many values
+        files located in the same parent directory you should consider using --values-cnf-dir argument.
+
+-vcd --values-cnf-dir VALUES_CNF_DIRECTORY
+        relative path to a directory with default values files that should be used for CSAR build.
+        The path must be relative to the working directory mounted in the Package Manager container.
+        These values are applied when installing Helm charts from the CSAR. Each values files in the
+        directory should have the same name as on of the chart used to build the CSAR. For more
+        information on the default values files please refer to the EVNFM VNFD Design Guide. If you
+        have only on or a few values files you should consider using --values-cnf-file argument.
+
+--sha512 BOOLEAN
+        this boolean argument indicates if sha512 hashes should be generated for each artifact in the
+        CSAR. Generated hashes are appended to the manifest file. If false is provided the hashes are not
+        generated. Default value for this argument is true.
+
+--key KEY_PATH
+        relative path to key file that should be used to generate signature(s) for CSAR. The path must be
+        relative to the working directory mounted in the Package Manager container. Signature format is
+        controlled by the --pkgOption argument.
+
+-cert --certificate CERTIFICATE_PATH
+        relative path to certificate file that should be used to generate signature(s) for CSAR. The path
+        must be relative to the working directory mounted in the Package Manager container. Signature format
+        is controlled by the --pkgOption argument.
+
+--pkgOption PACKAGE_OPTION
+        specifies packaging option that should be used for CSAR build. The options define the way the whole
+        CSAR or individual artifacts in the CSAR will be cryptographically signed. For further information
+        on the format and requirements of the signature please refer to the applicable SOL 004 standard.
+        Supported values are {1,2}. Use 1 for Option1 and 2 for Option2. Default value is 1.
+
+--images IMAGES_PATH
+        relative path to a pre-packaged archive with images that should be used for CSAR build. The path
+        must be relative to the working directory mounted in the Package Manager container. It is up to
+        the user of the Package Manager to ensure that the images are of correct format and match those
+        images reference in the Helm charts used to build the CSAR. Package Manager does not validate any
+        of those constraints.
+
+--product-report REPORT_FILENAME
+        name of the file where to store generated product report. Product report contains information about
+        included charts and images. Information for the report is collected based on the eric-product-info.yaml
+        files in Helm charts of the CSAR. If this argument is not provided product report is not generated.
+
+--disable-helm-template
+        this flag indicates that Helm template operation must not be used when parsing image references from
+        Helm charts used to build a CSAR. When this flag is provided CSAR developer must control image parsing
+        logic with either the --eric-product-info flag or the --eric-product-info-charts arguments. Otherwise,
+        no images will be collected and saved to CSAR archive. Comparing to when this flag is not provided is
+        that no images set validation is performed by comparing the set of images from Helm template output and
+        eric-product-info.yaml files.
+
+--eric-product-info
+        this flags indicates that eric-product-info.yaml should be used for all charts in a CSAR. This means
+        that the set of images pulled and save for a CSAR will be the union of the sets of images specified
+        in each Helm chart used for a CSAR as well as its dependent charts. Unless --disable-helm-template
+        flag is set, templating using Helm binary is also performed by Package Manager to validate that
+        template output does not container any images that are not listed in eric-product-info.yaml files.
+        If this constraint is violated - an exception is thrown. If you need to use eric-product-info.yaml
+        files only for some of the charts used in a CSAR you should consider using the --eric-product-info-charts
+        argument
+
+--eric-product-info-charts [CHART_NAME [CHART_NAME ...]]
+        one or many paths to charts for which eric-product-info.yaml should be used to collect image references
+        from helm charts in the CSAR. The path must be relative to the working directory mounted in the Package
+        Manager container. These image references are than used to pull and save images locally for the CSAR build.
+        The arguments allow to specify only those chars that are provided via the --helm argument. To specify a
+        chart via this argument means that the dependencies of the chart will also be scanned for eric-product-info.yaml
+        files. If the chart itself ot one of its dependencies does not contain an eric-product-info.yaml file
+        an error will be thrown by the Package Manager. For charts not provided in this argument Helm template
+        operation is used to collect Docker image references.
+
+--no-images
+        this flag is used to indicate that no images should be used to build a CSAR. This means that all
+        images referenced in the Helm charts of the CSAR will be pulled using the default container registry
+        mentioned in the charts. This scenario is applicable only in cases when images referenced in charts can
+        be pulled without authentication by the cluster nodes the CNF is going to be installed on.
+
+--helm3
+        this flag indicates that Helm 3 finary should be used to perform template operation on the Helm charts
+        in the CSAR. If you need to provide specific minor version of Helm 3, please use --helm-version argument.
+        By default, Helm 2 is used.
+
+--helm-version
+        this argument specifies exact minor version of Helm 3 that should be used to template Helm charts in
+        the csar build. Supported values are {3.4.2,3.5.1,3.6.3,3.7.1,3.8.2,3.10.1,3.10.3,3.11.3,3.12.0,3.13.0}.
+        This argument does not have a default value.
+
+--helm-debug
+        this flag is used to indicate that all Helm commands launched as sub-processes during CSAR build
+        will be executed with --debug option. The output of those commands will hence be more verbose.
+
+--agentk
+        this flag indicates that Agentk should be used to pull images for the CSAR. This flag must be used
+        if you are providing authentication config via the --docker-config argument. Package Manager at this moment
+        does not support the authentication to a container registry when pulling images with docker binary.
+        For further reference on the Agentk functionality please refer to the Gerrit for documentation:
+        <https://gerrit.ericsson.se/#/admin/projects/pc/agent-k>
+
+--is-upgrade
+        this flag indicate that Package Manager should set --is-upgrade flag for Helm template command. Helm
+        template command is used to parse image references from the charts that are used to build a CSAR.
+        Internally, this sets .Release.IsUpgrade instead of .Release.IsInstall for Helm template context.
+
+--extract-crds
+        This option collects and extracts all CRDs included in the Helm chart and all of its subcharts and packages
+        them into CSAR independently along with the top level Helm chart.
+
+Future development items
+    - provide support for --timeout argument when images are pulled with Docker client (currently ignored)
+    - use value of --docker-config argument when images are pulled with Docker client (currently ignored)
+    - propagate --debug flag to every subprocess launched by Package Manager (currently ignored for Docker and Helm binaries)
+
+Example usage
+
+Package Manager is delivered as a Python executable inside a Docker images. So it can only be executed
+with a Docker Client binary. Examples of Package Manager run which outputs help prompt:
+
+docker run --rm armdocker.rnd.ericsson.se/proj-am/releases/eric-am-package-manager:<pm-version> --help
+
+docker run --rm armdocker.rnd.ericsson.se/proj-am/releases/eric-am-package-manager:<pm-version> generate --help
+
+When Package Manager is used to build a CSAR several other arguments need to be provided to the Docker Client
+in order to create the container correctly. First, the directory with CSAR artifacts must be mounted to the
+/csar directory inside the container:
+
+-v <csar-artifacts-directory>:/csar
+
+Example:
+
+-v $PWD:/csar
+
+This directory must contain all files and directories which are than referenced in the CMD parameters for the
+Package Manager executable. Then referencing the files and directories their relative path to the mounted directory
+must be specified.
+
+By default, the Package Manager container is run under the root user and the produced CSAR has corresponding
+permissions set on it. To change this, the run user and group must be changed with the following parameters:
+
+-u <run-user>:<run-group>
+
+Example:
+
+-u $(id -u):$(id -g)
+
+Package Manager image contains only Docker Client binary. This means that whenever Docker images must be pulled
+to build a CSAR, Docker Server socket must be mounted into the container as a volume:
+
+-v <local-docker-socket-path>:/var/run/docker.sock \
+
+Example:
+
+-v /var/run/docker.sock:/var/run/docker.sock \
+
+When Package Manage needs to use auth credentials to pull Docker images the Docker config files from the host
+system must be mounted into the container:
+
+-v <path-to-local-docker-config>:/config/.docker/config.json \
+
+Example:
+
+-v ~/.docker/config:/config/.docker/config.json \
+
+When Docker config is mounted like that 2 other changes need to be done to the Package Manager execution
+command. First, the run group must be changed for the container, because the Docker config is owned by the
+docker group:
+
+-u <run-user>:<docker-group-id>
+
+Example:
+
+-u $(id -u):$(getent group docker | cut -d: -f3)
+
+Second, the path to the directory with mounted Docker config must be specified to the Package Manager
+executable with the --docker-config arguments:
+
+--docker-config <path-to-docker-config-directory-inside-container>
+
+Example:
+
+--docker-config /config/.docker/
+
+Example of a complete Docker command to run Package Manager:
+
+docker run --rm \
+-u $(id -u):$(getent group docker | cut -d: -f3) \
+-v /var/run/docker.sock:/var/run/docker.sock \
+-v ~/.docker/config:/config/.docker/config.json \
+-v $PWD:/csar \
+-w /csar armdocker.rnd.ericsson.se/proj-am/releases/eric-am-package-manager:2.104.0-1 generate \
+--docker-config /config/.docker/ \
+--agentk \
+--helm \
+eric-sec-sip-tls-crd-4.2.0+32.tgz \
+eric-sec-certm-crd-2.8.0+72.tgz \
+scale-crd-1.0.0.tgz \
+spider-app-flexible-verification-4.0.1.tgz \
+--manifest spider-app-b-etsi-tosca-rel4.mf \
+--vnfd spider-app-b-etsi-tosca-rel4.yaml  \
+--sol-version 4.3.1  \
+--name spider-app-b-etsi-tosca-rel4-1.0.30 \
+--definitions imports \
+--scale-mapping scaling_mapping.yaml \
+--history ChangeLog.txt \
+--licenses licenses
+
+
+Example of a complete Docker command to run Package Manager for creating helmfile CSAR:
+
+docker run --rm \
+-u $(id -u):$(getent group docker | cut -d: -f3) \
+-v /var/run/docker.sock:/var/run/docker.sock \
+-v ~/.docker/config:/config/.docker/config.json \
+-v $PWD:/csar \
+-w /csar armdocker.rnd.ericsson.se/proj-am/releases/eric-am-package-manager:<version> generate \
+--docker-config /config/.docker/ \
+--eric-product-info \
+--helmfile eric-<product>-helmfile-<version>.tgz \
+--name eric-<product>-helmfile-<version>
+--sol-version 4.3.1
+
+Appendix
+
+Example of file content for --values-csar argument:
+
+vnf_provider_id: Ericsson
+vnf_product_name: SBG-TH
+vnf_package_version: cxp9025898_4r81e08
+

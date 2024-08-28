@@ -1,0 +1,3 @@
+[submodule "vnfsdk-pkgtools"]
+	path = vnfsdk-pkgtools
+	url = ../vnfsdk-pkgtools

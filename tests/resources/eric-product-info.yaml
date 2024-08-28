@@ -1,0 +1,54 @@
+#
+# COPYRIGHT Ericsson 2024
+#
+#
+#
+# The copyright to the computer program(s) herein is the property of
+#
+# Ericsson Inc. The programs may be used and/or copied only with written
+#
+# permission from Ericsson Inc. or in accordance with the terms and
+#
+# conditions stipulated in the agreement/contract under which the
+#
+# program(s) have been supplied.
+#
+
+productName: "Storage Encryption Provider"
+productNumber: "CXD 101 0692"
+images:
+  sepPlugin:
+    productName: "SEP Plugin Image"
+    productNumber: "CXU 101 0863"
+    registry: "armdocker.rnd.ericsson.se"
+    repoPath: "proj-adp-rs-storage-encr-released"
+    name: "eric-cs-storage-encryption-provider-plugin"
+    tag: "1.1.0-35"
+  mountTarget:
+    productName: "SEP Mount Target Image"
+    productNumber: "CXU 101 0629"
+    registry: "armdocker.rnd.ericsson.se"
+    repoPath: "proj-adp-rs-storage-encr-released"
+    name: "eric-cs-storage-encryption-provider-mount"
+    tag: "1.1.0-35"
+  livenessProbe:
+    productName: "Livenessprobe"
+    productNumber: "CXU 101 1077"
+    registry: "armdocker.rnd.ericsson.se"
+    repoPath: "proj-adp-rs-storage-encr-released"
+    name: "eric-cs-storage-encryption-provider-livenessprobe"
+    tag: "2.4.0-32"
+  nodeDriverRegistrar:
+    productName: "Node Driver Registrar"
+    productNumber: "CXU 101 1078"
+    registry: "armdocker.rnd.ericsson.se"
+    repoPath: "proj-adp-rs-storage-encr-released"
+    name: "eric-cs-storage-encryption-provider-node-driver-registrar"
+    tag: "2.3.0-34"
+  csiProvisioner:
+    productName: "CSI Provisioner"
+    productNumber: "CXU 101 1079"
+    registry: "armdocker.rnd.ericsson.se"
+    repoPath: "proj-adp-rs-storage-encr-released"
+    name: "eric-cs-storage-encryption-provider-external-provisioner"
+    tag: "3.0.0-41"

@@ -1,0 +1,116 @@
+#
+# COPYRIGHT Ericsson 2024
+#
+#
+#
+# The copyright to the computer program(s) herein is the property of
+#
+# Ericsson Inc. The programs may be used and/or copied only with written
+#
+# permission from Ericsson Inc. or in accordance with the terms and
+#
+# conditions stipulated in the agreement/contract under which the
+#
+# program(s) have been supplied.
+#
+
+global:
+  registry:
+    url: armdocker.rnd.ericsson.se
+    pullSecret: armdocker
+
+# Configuration for ADP subcharts
+#
+eric-mesh-sidecar-injector:
+  enabled: true
+
+  istio_cni:
+    enabled: false
+
+  imageCredentials:
+    repoPath: proj-adp-gs-service-mesh
+    pullPolicy: IfNotPresent
+    registry:
+      url:
+
+  images:
+    sidecar_injector:
+      name: eric-mesh-sidecar-injector
+      tag: 1.1.0-130
+    proxy:
+      name: eric-mesh-proxy
+      tag: 1.1.0-130
+    proxy_init:
+      name: eric-mesh-proxy-init
+      tag: 1.1.0-130
+
+eric-mesh-controller:
+  enabled: true
+
+  #Add to follow ADP Helm design rule
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+
+  imageCredentials:
+    repoPath: proj-adp-gs-service-mesh
+    pullPolicy: IfNotPresent
+    registry:
+      url:
+
+  images:
+    pilot:
+      name: eric-mesh-controller
+      tag: 1.1.0-130
+    proxy:
+      name: eric-mesh-proxy
+      tag: 1.1.0-130
+    kubectl:
+      name: eric-mesh-tools
+      tag: 1.1.0-130
+
+eric-mesh-certificate-mgr:
+  enabled: true
+
+  #Workload cert ttl
+  workloadCertTtl: 2160h
+
+  imageCredentials:
+    repoPath: proj-adp-gs-service-mesh
+    pullPolicy: IfNotPresent
+    registry:
+      url:
+      #pullSecret:
+
+  images:
+    security:
+      name: eric-mesh-certificate-mgr
+      tag: 1.1.0-130
+    kubectl:
+      name: eric-mesh-tools
+      tag: 1.1.0-130
+
+eric-mesh-gateways:
+  enabled: true
+
+  imageCredentials:
+    repoPath: proj-adp-gs-service-mesh
+    pullPolicy: IfNotPresent
+    registry:
+      url:
+      #pullSecret:
+
+  images:
+    proxy:
+      name: eric-mesh-proxy
+      tag: 1.1.0-130
+    proxy_init:
+      name: eric-mesh-proxy-init
+      tag: 1.1.0-130
+    sds:
+      name: eric-mesh-certificate-mgr-agent
+      tag: 1.1.0-130
+
+enabled: true

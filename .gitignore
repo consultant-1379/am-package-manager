@@ -1,0 +1,36 @@
+*.egg*
+*.pyc
+.coverage
+.tox
+.cache/
+*.spec
+dist/
+*.idea
+*.iml
+vnfsdk-pkgtools*
+build/
+target/
+*.tar.gz
+am-pkg-mgr-venv/
+eric-am-package-manager*
+
+#acceptance test files
+*.csar
+tests/robot/*.html
+tests/robot/*.xml
+tests/robot/reports/*
+tests/robot/output*
+output/*
+*.tar
+**/*.tar
+acceptance-type2*
+*.zip
+ tests/*
+
+#CI Files
+am-ci-flow/
+.project*
+artifact.properties
+CHANGELOG.md
+
+.bob/

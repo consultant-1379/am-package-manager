@@ -1,0 +1,26 @@
+#
+# COPYRIGHT Ericsson 2024
+#
+#
+#
+# The copyright to the computer program(s) herein is the property of
+#
+# Ericsson Inc. The programs may be used and/or copied only with written
+#
+# permission from Ericsson Inc. or in accordance with the terms and
+#
+# conditions stipulated in the agreement/contract under which the
+#
+# program(s) have been supplied.
+#
+
+productName: "Backup and Restore Orchestrator"
+productNumber: "CXC 201 2182"
+images:
+  backupAndRestore:
+    productName: "Backup and Restore Orchestrator"
+    productNumber: "CXC 201 2182"
+    registry: armdocker.rnd.ericsson.se
+    repoPath: proj-adp-eric-ctrl-bro-drop
+    name: eric-ctrl-bro
+    tag: 4.7.0-23

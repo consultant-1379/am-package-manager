@@ -1,0 +1,5 @@
+[RedHat-7-devtools]
+name=RedHat-7-devtools
+baseurl=https://arm.sero.gic.ericsson.se/artifactory/proj-redhat-repos-rpm-local/repos/rhel-x86_64-server-7-devtools-1/
+enabled=1
+gpgcheck=0

@@ -1,0 +1,40 @@
+#
+# COPYRIGHT Ericsson 2024
+#
+#
+#
+# The copyright to the computer program(s) herein is the property of
+#
+# Ericsson Inc. The programs may be used and/or copied only with written
+#
+# permission from Ericsson Inc. or in accordance with the terms and
+#
+# conditions stipulated in the agreement/contract under which the
+#
+# program(s) have been supplied.
+#
+
+productName: "CM Mediator HELM"
+productNumber: "CXC 201 1506"
+images:
+  eric-cm-mediator:
+    productName: "CM Mediator Image"
+    productNumber: "CXC 201 1452"
+    registry: "armdocker.rnd.ericsson.se"
+    repoPath: "proj-common-assets-cd-released/control/cm/eric-cm-mediator"
+    name: eric-cm-mediator
+    tag: "7.6.0-11"
+  eric-cm-key-init:
+    productName: "CM Key Init Image"
+    productNumber: "CXC 174 2649"
+    registry: "armdocker.rnd.ericsson.se"
+    repoPath: "proj-common-assets-cd-released/control/cm/eric-cm-mediator"
+    name: eric-cm-key-init
+    tag: "7.6.0-11"
+  eric-cm-mediator-init-container:
+    productName: "CM Mediator Init Container"
+    productNumber: "CXU 101 0357"
+    registry: "armdocker.rnd.ericsson.se"
+    repoPath: "proj-common-assets-cd-released/control/cm/eric-cm-mediator"
+    name: eric-cm-mediator-init-container
+    tag: "7.6.0-11"

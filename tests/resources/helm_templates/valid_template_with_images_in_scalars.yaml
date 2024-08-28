@@ -1,0 +1,314 @@
+---
+# Source: eric-ccsm-service-mesh/charts/eric-ccsm-service-mesh/charts/eric-mesh-sidecar-injector/templates/sidecar-injector-configmap.yaml
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: istio-sidecar-injector
+  namespace: "default"
+  labels:
+    app: eric-mesh-sidecar-injector
+    chart: eric-mesh-sidecar-injector-1.2.0_29
+    heritage: "Tiller"
+    release: "release-name"
+    istio: sidecar-injector
+    app.kubernetes.io/name: eric-mesh-sidecar-injector
+    app.kubernetes.io/version: 1.2.0_29
+    app.kubernetes.io/instance: "release-name"
+  annotations:
+    ericsson.com/product-name: "ServiceMesh Sidecar injector"
+    ericsson.com/product-number: "CAV101068/1"
+    ericsson.com/product-revision: "R2A"
+data:
+  values: |-
+    {"alwaysInjectSelector":[],"enableNamespacesByDefault":false,"enabled":true,"global":{"arch":{"amd64":2,"ppc64le":2,"s390x":2},"controlPlaneSecurityEnabled":false,"defaultNodeSelector":{},"defaultPodDisruptionBudget":{"enabled":true},"defaultResources":{"requests":{"cpu":"10m"}},"defaultTolerations":[{"effect":"NoExecute","key":"node.kubernetes.io/unreachable","operator":"Exists","tolerationSeconds":1},{"effect":"NoExecute","key":"node.kubernetes.io/not-ready","operator":"Exists","tolerationSeconds":1}],"disablePolicyChecks":true,"enableHelmTest":false,"enableTracing":false,"imagePullPolicy":"IfNotPresent","imagePullSecrets":null,"localityLbSetting":{},"logging":{"level":"all:info"},"meshNetworks":{},"monitoringPort":15014,"mtls":{"enabled":false},"multiTenancy":{"enabled":false},"omitSidecarInjectorConfigMap":false,"oneNamespace":false,"outboundTrafficPolicy":{"mode":"ALLOW_ANY"},"policyCheckFailOpen":false,"priorityClassName":"","proxy":{"accessLogEncoding":"TEXT","accessLogFile":"","accessLogFormat":"","autoInject":"disabled","clusterDomain":"cluster.local","componentLogLevel":"","concurrency":2,"dnsRefreshRate":"300s","enableCoreDump":false,"envoyMetricsService":{"enabled":false,"host":null,"port":null},"envoyStatsd":{"enabled":false,"host":null,"port":null},"excludeIPRanges":"","excludeInboundPorts":"","excludeOutboundPorts":"","includeIPRanges":"","includeInboundPorts":"*","kubevirtInterfaces":"","logLevel":"info","privileged":false,"readinessFailureThreshold":30,"readinessInitialDelaySeconds":1,"readinessPeriodSeconds":2,"resources":{"limits":{"cpu":"2000m","memory":"1024Mi"},"requests":{"cpu":"100m","memory":"128Mi"}},"statusPort":15020,"tracer":""},"registry":{"pullSecret":"armdocker","url":"armdocker.rnd.ericsson.se"},"sds":{"enabled":false,"udsPath":"","useNormalJwt":false,"useTrustworthyJwt":false},"tracer":{"datadog":{"address":"$(HOST_IP):8126"},"lightstep":{"accessToken":"","address":"","cacertPath":"","secure":true},"zipkin":{"address":""}},"trustDomain":""},"imageCredentials":{"pullPolicy":"IfNotPresent","registry":{"url":null},"repoPath":"proj-adp-gs-service-mesh"},"images":{"proxy":{"name":"eric-mesh-proxy","tag":"1.2.0-29"},"proxy_init":{"name":"eric-mesh-proxy-init","tag":"1.2.0-29"},"sidecar_injector":{"name":"eric-mesh-sidecar-injector","tag":"1.2.0-29"}},"istio_cni":{"enabled":false},"neverInjectSelector":[],"nodeSelector":{},"podAntiAffinityLabelSelector":[],"podAntiAffinityTermLabelSelector":[],"replicaCount":2,"resources":{"limits":{"cpu":"100m","memory":"128Mi"},"requests":{"cpu":"10m","memory":"128Mi"}},"rewriteAppHTTPProbe":false,"tolerations":[],"updateStrategy":{"rollingUpdate":{"maxUnavailable":0},"type":"RollingUpdate"}}
+
+  config: |-
+    policy: disabled
+    alwaysInjectSelector:
+      []
+
+    neverInjectSelector:
+      []
+
+    template: |-
+      rewriteAppHTTPProbe: {{ .Values.rewriteAppHTTPProbe }}
+      {{- if or (not .Values.istio_cni.enabled) .Values.global.proxy.enableCoreDump }}
+      initContainers:
+      {{ if ne (annotation .ObjectMeta `sidecar.istio.io/interceptionMode` .ProxyConfig.InterceptionMode) `NONE` }}
+      {{- if not .Values.istio_cni.enabled }}
+      - name: istio-init
+        {{- if .Values.imageCredentials.registry.url }}
+        image: {{ .Values.imageCredentials.registry.url }}/{{ .Values.imageCredentials.repoPath }}/{{ index .Values "images" "proxy_init" "name" }}:{{ index .Values "images" "proxy_init" "tag" }}
+        {{- else }}
+        image: {{ .Values.global.registry.url }}/{{ .Values.imageCredentials.repoPath }}/{{ index .Values "images" "proxy_init" "name" }}:{{ index .Values "images" "proxy_init" "tag" }}
+        {{- end }}
+        args:
+        - "-p"
+        - "15001"
+        - "-u"
+        - 1337
+        - "-m"
+        - "{{ annotation .ObjectMeta `sidecar.istio.io/interceptionMode` .ProxyConfig.InterceptionMode }}"
+        - "-i"
+        - "{{ annotation .ObjectMeta `traffic.sidecar.istio.io/includeOutboundIPRanges` .Values.global.proxy.includeIPRanges }}"
+        - "-x"
+        - "{{ annotation .ObjectMeta `traffic.sidecar.istio.io/excludeOutboundIPRanges` .Values.global.proxy.excludeIPRanges }}"
+        - "-b"
+        - "{{ annotation .ObjectMeta `traffic.sidecar.istio.io/includeInboundPorts` (includeInboundPorts .Spec.Containers) }}"
+        - "-d"
+        - "{{ excludeInboundPort (annotation .ObjectMeta `status.sidecar.istio.io/port` .Values.global.proxy.statusPort) (annotation .ObjectMeta `traffic.sidecar.istio.io/excludeInboundPorts` .Values.global.proxy.excludeInboundPorts) }}"
+        {{ if or (isset .ObjectMeta.Annotations `traffic.sidecar.istio.io/excludeOutboundPorts`) (ne .Values.global.proxy.excludeOutboundPorts "") -}}
+        - "-o"
+        - "{{ annotation .ObjectMeta `traffic.sidecar.istio.io/excludeOutboundPorts` .Values.global.proxy.excludeOutboundPorts }}"
+        {{ end -}}
+        {{ if (isset .ObjectMeta.Annotations `traffic.sidecar.istio.io/kubevirtInterfaces`) -}}
+        - "-k"
+        - "{{ index .ObjectMeta.Annotations `traffic.sidecar.istio.io/kubevirtInterfaces` }}"
+        {{ end -}}
+        imagePullPolicy: "{{ .Values.global.imagePullPolicy }}"
+        resources:
+          requests:
+            cpu: 10m
+            memory: 10Mi
+          limits:
+            cpu: 100m
+            memory: 50Mi
+        securityContext:
+          runAsUser: 0
+          runAsNonRoot: false
+          capabilities:
+            add:
+            - NET_ADMIN
+          {{- if .Values.global.proxy.privileged }}
+          privileged: true
+          {{- end }}
+        restartPolicy: Always
+        env:
+        {{- if contains "*" (annotation .ObjectMeta `traffic.sidecar.istio.io/includeInboundPorts` "") }}
+        - name: INBOUND_CAPTURE_PORT
+          value: 15006
+        {{- end }}
+      {{- end }}
+      {{  end -}}
+      {{- if eq .Values.global.proxy.enableCoreDump true }}
+      - name: enable-core-dump
+        args:
+        - -c
+        - sysctl -w kernel.core_pattern=/var/lib/istio/core.proxy && ulimit -c unlimited
+        command:
+          - /bin/sh
+        {{- if .Values.imageCredentials.registry.url }}
+        image: {{ .Values.imageCredentials.registry.url }}/{{ .Values.imageCredentials.repoPath }}/{{ index .Values "images" "proxy_init" "name" }}:{{ index .Values "images" "proxy_init" "tag" }}
+        {{- else }}
+        image: {{ .Values.global.registry.url }}/{{ .Values.imageCredentials.repoPath }}/{{ index .Values "images" "proxy_init" "name" }}:{{ index .Values "images" "proxy_init" "tag" }}
+        {{- end }}
+        imagePullPolicy: IfNotPresent
+        resources: {}
+        securityContext:
+          runAsUser: 0
+          runAsNonRoot: false
+          privileged: true
+      {{- end }}
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: eric-mesh-certificate-mgr-cleanup-secrets-1.2.0_29
+  namespace: "default"
+  annotations:
+    "helm.sh/hook": post-delete
+    "helm.sh/hook-delete-policy": hook-succeeded
+    "helm.sh/hook-weight": "3"
+    ericsson.com/product-name: "ServiceMesh Certificate mgr"
+    ericsson.com/product-number: "CAV101072/1"
+    ericsson.com/product-revision: "R2A"
+  labels:
+    app: eric-mesh-certificate-mgr
+    chart: eric-mesh-certificate-mgr-1.2.0_29
+    heritage: "Tiller"
+    release: "release-name"
+spec:
+  template:
+    metadata:
+      name: eric-mesh-certificate-mgr-cleanup-secrets
+      labels:
+        app: eric-mesh-certificate-mgr
+        chart: eric-mesh-certificate-mgr-1.2.0_29
+        heritage: "Tiller"
+        release: "release-name"
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      serviceAccountName: eric-mesh-certificate-mgr-cleanup-secrets-service-account
+      containers:
+        - name: kubectl
+          image: "armdocker.rnd.ericsson.se/proj-adp-gs-service-mesh/eric-mesh-tools:1.2.0-29"
+          imagePullPolicy: IfNotPresent
+          command:
+          - /bin/bash
+          - -c
+          - >
+              kubectl get secret --all-namespaces | grep "istio.io/key-and-cert" |  while read -r entry; do
+                ns=$(echo $entry | awk '{print $1}');
+                name=$(echo $entry | awk '{print $2}');
+                echo "Start to delete The secret $name in namespace $ns"
+                kubectl delete secret $name -n $ns;
+              done
+      restartPolicy: OnFailure
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
+                - ppc64le
+                - s390x
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 2
+            preference:
+              matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
+          - weight: 2
+            preference:
+              matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - ppc64le
+          - weight: 2
+            preference:
+              matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - s390x
+      tolerations:
+      - effect: NoExecute
+        key: node.kubernetes.io/unreachable
+        operator: Exists
+        tolerationSeconds: 1
+      - effect: NoExecute
+        key: node.kubernetes.io/not-ready
+        operator: Exists
+        tolerationSeconds: 1
+---
+# Source: eric-ccsm-service-mesh/charts/eric-ccsm-service-mesh/charts/eric-mesh-certificate-mgr/templates/deployment.yaml
+# istio CA watching all namespaces
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eric-mesh-certificate-mgr
+  namespace: "default"
+  labels:
+    app: eric-mesh-certificate-mgr
+    chart: eric-mesh-certificate-mgr-1.2.0_29
+    heritage: "Tiller"
+    release: "release-name"
+    istio: citadel
+    app.kubernetes.io/name: eric-mesh-certificate-mgr
+    app.kubernetes.io/version: 1.2.0_29
+    app.kubernetes.io/instance: "release-name"
+  annotations:
+    ericsson.com/product-name: "ServiceMesh Certificate mgr"
+    ericsson.com/product-number: "CAV101072/1"
+    ericsson.com/product-revision: "R2A"
+spec:
+# It shall be hardcode to 1 for citadel issue.
+#  replicas: 1
+  replicas: 1
+  selector:
+    matchLabels:
+      istio: citadel
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+
+  template:
+    metadata:
+      labels:
+        app: eric-mesh-certificate-mgr
+        chart: eric-mesh-certificate-mgr-1.2.0_29
+        heritage: "Tiller"
+        release: "release-name"
+        istio: citadel
+        app.kubernetes.io/name: eric-mesh-certificate-mgr
+        app.kubernetes.io/version: 1.2.0_29
+        app.kubernetes.io/instance: "release-name"
+      annotations:
+        sidecar.istio.io/inject: "false"
+    spec:
+      serviceAccountName: istio-citadel-service-account
+      containers:
+        - name: citadel
+          image: "armdocker.rnd.ericsson.se/proj-adp-gs-service-mesh/eric-mesh-certificate-mgr:1.2.0-29"
+          imagePullPolicy: IfNotPresent
+          args:
+            - --append-dns-names=true
+            - --grpc-port=8060
+            - --citadel-storage-namespace=default
+            - --custom-dns-names=istio-pilot-service-account.default:istio-pilot.default
+            - --monitoring-port=15014
+            - --self-signed-ca=true
+            - --workload-cert-ttl=2160h
+            - --log_output_level=all:info
+          resources:
+            requests:
+              cpu: 10m
+
+      imagePullSecrets:
+        - name: armdocker
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
+                - ppc64le
+                - s390x
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 2
+            preference:
+              matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
+          - weight: 2
+            preference:
+              matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - ppc64le
+          - weight: 2
+            preference:
+              matchExpressions:
+              - key: beta.kubernetes.io/arch
+                operator: In
+                values:
+                - s390x
+      tolerations:
+      - effect: NoExecute
+        key: node.kubernetes.io/unreachable
+        operator: Exists
+        tolerationSeconds: 1
+      - effect: NoExecute
+        key: node.kubernetes.io/not-ready
+        operator: Exists
+        tolerationSeconds: 1
+
+
+---
